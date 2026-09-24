@@ -20,7 +20,7 @@ jobs:
           CGO_ENABLED: '1'
         run: |
           go mod tidy
-          go build -ldflags="-s -w -H windowsgui" -o clouddisk.exe .
+          env GOARCH=arm64 go build -ldflags="-s -w -H windowsgui" -o clouddisk_arm64.exe .
       - uses: actions/upload-artifact@v4
         with:
           name: clouddisk-windows
