@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Disk</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .hidden { display: none !important; }
+
+  /* 登录卡片 */
+  .auth-wrap { width: 100%; max-width: 360px; }
+  .title { font-size: 36px; font-weight: bold; margin-bottom: 32px; text-align: center; }
+  .card { width: 100%; border: 2px solid #fff; border-radius: 16px; padding: 20px; background: #000; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; color: #fff; margin-bottom: 6px; }
+  .field input { width: 100%; height: 48px; background: #0E0E0E; border: none; border-bottom: 1px solid #555; border-radius: 4px; color: #fff; padding: 0 12px; font-size: 16px; outline: none; }
+  .field input:focus { border-bottom-color: #fff; }
+  .btn-primary { width: 100%; height: 48px; background: #fff; color: #000; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 12px; }
+  .btn-text { width: 100%; height: 48px; background: transparent; color: #fff; border: none; font-size: 16px; cursor: pointer; }
+
+  /* 文件页 */
+  .disk-wrap { width: 100%; max-width: 480px; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; height: 56px; margin-bottom: 8px; }
+  .toolbar h2 { font-size: 20px; font-weight: 500; }
+  .toolbar .close { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 22px; color: #fff; background: none; border: none; }
+  .btn-upload { width: 100%; height: 48px; background: #fff; color: #000; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 16px; }
+
+  .file-item { display: flex; align-items: center; background: #0E0E0E; border: 1px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+  .file-size { color: #AAAAAA; font-size: 13px; margin-right: 8px; flex-shrink: 0; }
+  .file-name { flex: 1; color: #fff; font-size: 16px; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .file-name::-webkit-scrollbar { display: none; }
+  .file-dl { background: none; border: none; color: #fff; font-size: 14px; padding: 8px 12px; cursor: pointer; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div id="auth-box" class="auth-wrap">
+  <div class="title" id="page-title">你好</div>
+  <div class="card">
+    <div class="field">
+      <label>用户</label>
+      <input id="user" type="text">
+    </div>
+    <div class="field">
+      <label>密码</label>
+      <input id="pass" type="password">
+    </div>
+    <div class="field hidden" id="repass-field">
+      <label>重复密码</label>
+      <input id="repass" type="password">
+    </div>
+    <button class="btn-primary" id="main-btn" onclick="submitAuth()">登录</button>
+    <button class="btn-text" id="toggle-btn" onclick="toggleView()">或注册</button>
+  </div>
+</div>
+
+<div id="disk-box" class="disk-wrap hidden">
+  <div class="toolbar">
+    <h2>文件列表</h2>
+    <button class="close" onclick="logout()">✕</button>
+  </div>
+  <button class="btn-upload" onclick="document.getElementById('fileInput').click()">上传文件</button>
+  <input type="file" id="fileInput" onchange="upload()" style="display:none">
+  <div id="fileList"></div>
+</div>
+
+<script>
+const API = 'http://[2409:8a55:1511:41f0:f0e7:36ff:feca:df42]:3000';
+let token = localStorage.getItem('token');
+let isRegisterMode = false;
+
+if(token) showDisk();
+
+function toggleView() {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('page-title').innerText = isRegisterMode ? '注册' : '你好';
+  document.getElementById('repass-field').classList.toggle('hidden', !isRegisterMode);
+  document.getElementById('main-btn').innerText = isRegisterMode ? '注册' : '登录';
+  document.getElementById('toggle-btn').innerText = isRegisterMode ? '返回登录' : '或注册';
+}
+
+async function submitAuth() {
+  const u = document.getElementById('user').value, p = document.getElementById('pass').value;
+  if(!u || !p) return alert('请输入账号密码');
+  if(isRegisterMode) {
+    const rp = document.getElementById('repass').value;
+    if(p !== rp) return alert('两次输入的密码不一致');
+  }
+  const type = isRegisterMode ? 'register' : 'login';
+  const res = await fetch(`${API}/${type}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:u, password:p})
+  });
+  const data = await res.json();
+  if(data.token) { localStorage.setItem('token', data.token); token = data.token; showDisk(); }
+  else if(isRegisterMode && res.ok) { alert('注册成功，请登录'); toggleView(); }
+  else { alert(data.message || data.error); }
+}
+
+function logout() { localStorage.removeItem('token'); location.reload(); }
+
+async function showDisk() {
+  document.getElementById('auth-box').classList.add('hidden');
+  document.getElementById('disk-box').classList.remove('hidden');
+  const res = await fetch(`${API}/files`, { headers: { Authorization: `Bearer ${token}` } });
+  const files = await res.json();
+  const fmt = b => b < 1024*1024 ? (b/1024).toFixed(1)+' KB'
+              : b < 1024*1024*1024 ? (b/1048576).toFixed(1)+' MB'
+              : (b/1073741824).toFixed(2)+' GB';
+  document.getElementById('fileList').innerHTML = files.map(f => `
+    <div class="file-item">
+      <span class="file-size">${fmt(f.size)}</span>
+      <span class="file-name">${f.name}</span>
+      <button class="file-dl" onclick="downloadFile('${f.name.replace(/'/g,"\\'")}')">下载</button>
+    </div>
+  `).join('');
+}
+
+async function upload() {
+  const file = document.getElementById('fileInput').files[0];
+  if(!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  await fetch(`${API}/upload`, { method:'POST', headers:{ Authorization:`Bearer ${token}` }, body:fd });
+  document.getElementById('fileInput').value = '';
+  showDisk();
+}
+
+async function downloadFile(name) {
+  const res = await fetch(`${API}/download/${encodeURIComponent(name)}`, { headers: { Authorization: `Bearer ${token}` } });
+  if(!res.ok) return alert('下载失败');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  window.URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

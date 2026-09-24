@@ -1,0 +1,8 @@
+node_modules/
+*.apk
+*.deb
+*.tar.gz
+storage/
+build/
+.gradle/
+*.log

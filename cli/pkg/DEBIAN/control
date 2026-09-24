@@ -1,0 +1,5 @@
+Package: clouddisk
+Version: 1.1
+Architecture: aarch64
+Maintainer: you
+Description: Self-hosted cloud disk CLI

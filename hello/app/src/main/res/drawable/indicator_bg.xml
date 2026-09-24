@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- 完整白色描边 -->
+  <item>
+    <shape>
+      <solid android:color="#00000000"/>
+      <stroke android:width="2dp" android:color="#FFFFFF"/>
+      <corners android:radius="8dp"/>
+    </shape>
+  </item>
+  <!-- 顶部中间黑色遮挡块，给 hint 让位 -->
+  <item
+      android:left="8dp"
+      android:top="-2dp"
+      android:width="38dp"
+      android:height="6dp">
+    <shape>
+      <solid android:color="#000000"/>
+    </shape>
+  </item>
+</layer-list>
